@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Cotizador Bloque Libre</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d0231f">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bloque Libre">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Plan: hoja técnica gris concreto con un solo acento rojo (marca Bloque Libre).
+   Layout: formulario en secciones a la izquierda, resumen de precio fijo a la derecha (arriba en celular). */
+:root {
+  --bg: #eceeef;
+  --panel: #ffffff;
+  --ink: #1d2124;
+  --muted: #646b70;
+  --line: #d3d7da;
+  --accent: #d0231f;
+  --accent-ink: #ffffff;
+  --ok: #217a43;
+  --warn: #a8550a;
+  --field: #f6f7f8;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151819; --panel: #1e2224; --ink: #e9ecee; --muted: #9aa2a7;
+    --line: #343a3e; --accent: #ef4a3f; --accent-ink: #ffffff;
+    --ok: #5cc184; --warn: #e3a35a; --field: #262b2e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151819; --panel: #1e2224; --ink: #e9ecee; --muted: #9aa2a7;
+  --line: #343a3e; --accent: #ef4a3f; --accent-ink: #ffffff;
+  --ok: #5cc184; --warn: #e3a35a; --field: #262b2e; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-bottom: 3px solid var(--ink); padding-bottom: 10px; margin-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.mark { width: 26px; height: 26px; background: var(--accent); display: inline-block; }
+h1 { font: 700 30px/1 var(--font-display); letter-spacing: .02em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 13px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.summary { position: sticky; top: 16px; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .summary { position: static; order: -1; }
+}
+section.card, .summary .card { background: var(--panel); border: 1px solid var(--line); padding: 18px; }
+.forms { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.forms > section { min-width: 0; }
+h2 { font: 600 19px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 12px; display: flex; gap: 8px; align-items: baseline; }
+h2 .n { color: var(--accent); font-family: var(--font-mono); font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+label.f { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; font-size: 13px; color: var(--muted); }
+label.f span.l { color: var(--ink); font-weight: 500; }
+.in { display: flex; align-items: stretch; border: 1px solid var(--line); background: var(--field); }
+.in:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; }
+.in input, .in select { flex: 1 1 0; width: 100%; min-width: 0;border: 0; background: transparent; color: var(--ink); font: 15px var(--font-mono); padding: 8px 10px; outline: none; }
+.in .u { flex: none; padding: 8px 10px; color: var(--muted); font: 13px var(--font-mono); border-left: 1px solid var(--line); white-space: nowrap; }
+.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.drop { border: 2px dashed var(--line); padding: 16px; display: grid; gap: 6px; justify-items: start; background: var(--field); cursor: pointer; }
+.drop.over { border-color: var(--accent); }
+.drop input { font: 13px var(--font-body); color: var(--ink); max-width: 100%; }
+.drop strong { font-weight: 600; }
+.stl-info { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip { font: 12px var(--font-mono); padding: 3px 8px; border: 1px solid var(--line); background: var(--panel); }
+.chip.ok { color: var(--ok); border-color: currentColor; }
+.chip.bad { color: var(--accent); border-color: currentColor; }
+.chip.warn { color: var(--warn); border-color: currentColor; }
+details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+summary { cursor: pointer; font-weight: 500; }
+summary:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.price-label { font: 600 13px var(--font-display); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.price { font: 700 56px/1 var(--font-display); color: var(--accent); font-variant-numeric: tabular-nums; margin: 4px 0; }
+.per { font: 15px var(--font-mono); color: var(--ink); }
+.time { margin-top: 12px; padding: 10px 12px; background: var(--field); border-left: 3px solid var(--ink); font-size: 14px; }
+.time b { font: 600 22px/1.1 var(--font-display); display: block; font-variant-numeric: tabular-nums; }
+.status { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+td { padding: 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.v { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 8px; }
+tr.total td { border-bottom: 0; border-top: 2px solid var(--ink); font-weight: 600; padding-top: 8px; }
+td small { color: var(--muted); display: block; font-size: 12px; }
+.btns { display: grid; gap: 8px; margin-top: 14px; }
+button { font: 600 15px var(--font-body); padding: 11px 14px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:hover { filter: brightness(1.05); }
+textarea { width: 100%; min-height: 190px; font: 13px/1.45 var(--font-mono); border: 1px solid var(--line); background: var(--field); color: var(--ink); padding: 10px; resize: vertical; margin-top: 12px; }
+.note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+.toast { min-height: 18px; font-size: 13px; color: var(--ok); margin-top: 6px; }
+.alert { border: 2px solid var(--accent); background: var(--panel); padding: 12px 14px; margin-bottom: 16px; font-size: 14px; }
+.alert strong { display: block; margin-bottom: 2px; }
+.alert a { color: var(--accent); word-break: break-all; }
+.inv-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.inv-sum div { border-left: 3px solid var(--line); padding: 2px 0 2px 10px; }
+.inv-sum div.key { border-left-color: var(--accent); }
+.inv-sum b { display: block; font: 600 22px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.inv-sum span { font-size: 12px; color: var(--muted); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); }
+table.inv { margin: 0; min-width: 760px; font-size: 13px; }
+table.inv th { text-align: left; font: 600 12px var(--font-body); color: var(--muted); padding: 8px 6px; border-bottom: 2px solid var(--ink); background: var(--field); white-space: nowrap; }
+table.inv td { padding: 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.inv input, table.inv select { width: 100%; border: 1px solid transparent; background: transparent; color: var(--ink); font: 13px var(--font-body); padding: 5px 4px; }
+table.inv input[type="number"] { font-family: var(--font-mono); text-align: right; }
+table.inv input:focus, table.inv select:focus { border-color: var(--accent); outline: none; background: var(--field); }
+table.inv td.t { text-align: right; font-family: var(--font-mono); white-space: nowrap; padding-right: 8px; }
+table.inv tfoot td { font-weight: 600; border-top: 2px solid var(--ink); border-bottom: 0; padding: 8px 6px; }
+button.x { padding: 4px 9px; font-size: 14px; border-color: var(--line); color: var(--muted); }
+table.pieces { min-width: 560px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="alert" id="jsAlert" role="alert">
+    <strong>El cotizador no se está ejecutando en esta vista.</strong>
+    Esto pasa en vistas previas (por ejemplo, de WhatsApp o del correo), que muestran la página pero no la dejan calcular. Ábrela en el navegador Chrome o Safari para usarla.
+  </div>
+  <div class="alert" id="errAlert" role="alert" hidden>
+    <strong>Algo falló al calcular.</strong> <span id="errText"></span>
+    <div class="btns" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))"><button type="button" id="hardReset">Borrar datos guardados y recargar</button></div>
+  </div>
+  <div class="alert" id="setupAlert" role="status" hidden>
+    <strong>Configura tus precios en las secciones 04 y 05 y toca "Guardar como mis valores".</strong>
+    El precio de la botella de resina está en la sección 02. Si ya los tienes en otro dispositivo, usa "Importar datos" en la sección 06.
+  </div>
+  <header class="top">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><h1>Cotizador Bloque Libre</h1></div>
+    <div class="sub">Impresión 3D en resina · Anycubic Photon Mono M7 Pro · precios en USD</div>
+  </header>
+
+  <div class="layout">
+    <div class="forms">
+      <section class="card">
+        <h2><span class="n">01</span>Piezas del pedido</h2>
+        <label class="drop" id="drop" for="stl">
+          <strong>Sube uno o varios STL del mismo pedido</strong>
+          <span class="hint" style="margin:0">Puedes elegir varios archivos a la vez o arrastrarlos aquí. Se suman a la lista; todos van en la misma cotización.</span>
+          <input type="file" id="stl" accept=".stl" multiple>
+        </label>
+        <div class="stl-info" id="stlInfo"></div>
+        <div class="tablewrap" style="margin-top:14px">
+          <table class="inv pieces" aria-label="Piezas del pedido">
+            <thead><tr><th>Pieza</th><th>Volumen (ml)</th><th>Alto (mm)</th><th>Base (mm)</th><th>Cant.</th><th><span class="sr">Quitar</span></th></tr></thead>
+            <tbody id="pieceBody"></tbody>
+          </table>
+        </div>
+        <div class="grid" style="margin-top:12px">
+          <label class="f"><span class="l">Nombre del pedido</span>
+            <div class="in"><input id="name" type="text" value="" placeholder="Ej.: Figuras para María"></div></label>
+          <label class="f"><span class="l">Impresiones (placas)</span>
+            <div class="in"><input id="platesManual" type="number" min="1" step="1" placeholder="auto"><span class="u">placas</span></div></label>
+        </div>
+        <div class="btns" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+          <button type="button" id="addPiece">Agregar pieza a mano</button>
+          <button type="button" id="clearPieces">Vaciar lista</button>
+        </div>
+        <p class="hint" id="plateHint">Todas las piezas se imprimen juntas: el tiempo lo marca la pieza más alta, y la máquina, la luz y los consumibles se cobran por placa, no por pieza. En "auto" el cotizador calcula cuántas placas hacen falta según el espacio que ocupan las bases.</p>
+      </section>
+
+      <section class="card">
+        <h2><span class="n">02</span>Resina</h2>
+        <div class="grid">
+          <label class="f"><span class="l">Resina</span>
+            <div class="in"><input id="resin" type="text" value="ABS-Like Pro 2 blanca"></div></label>
+          <label class="f"><span class="l">Precio de la botella</span>
+            <div class="in"><span class="u" style="border-left:0;border-right:1px solid var(--line)">$</span><input id="bottlePrice" type="number" min="0" step="0.01" value="0"></div></label>
+          <label class="f"><span class="l">Contenido de la botella</span>
+            <div class="in"><input id="bottleG" type="number" min="1" step="1" value="1000"><span class="u">g</span></div></label>
+          <label class="f"><span class="l">Densidad</span>
+            <div class="in"><input id="density" type="number" min="0.5" step="0.01" value="1.10"><span class="u">g/ml</span></div></label>
+          <label class="f"><span class="l">Soportes y desperdicio</span>
+            <div class="in"><input id="waste" type="number" min="0" step="1" value="25"><span class="u">%</span></div></label>
+        </div>
+        <p class="hint">El desperdicio cubre soportes, raft y la resina que queda en la pieza y el tanque.</p>
+      </section>
+
+      <section class="card">
+        <h2><span class="n">03</span>Tiempo de impresión</h2>
+        <div class="grid">
+          <label class="f"><span class="l">Elevación Z (soportes)</span>
+            <div class="in"><input id="zlift" type="number" min="0" step="0.5" value="5"><span class="u">mm</span></div></label>
+          <label class="f"><span class="l">Horas manuales (opcional)</span>
+            <div class="in"><input id="manualHours" type="number" min="0" step="0.1" placeholder="auto"><span class="u">h</span></div></label>
+        </div>
+        <details>
+          <summary>Parámetros del perfil de resina</summary>
+          <div class="grid" style="margin-top:12px">
+            <label class="f"><span class="l">Altura de capa</span><div class="in"><input id="layer" type="number" min="0.01" step="0.01" value="0.05"><span class="u">mm</span></div></label>
+            <label class="f"><span class="l">Exposición normal</span><div class="in"><input id="exp" type="number" min="0" step="0.1" value="1.7"><span class="u">s</span></div></label>
+            <label class="f"><span class="l">Off time</span><div class="in"><input id="off" type="number" min="0" step="0.1" value="0.7"><span class="u">s</span></div></label>
+            <label class="f"><span class="l">Espera antes de elevar</span><div class="in"><input id="wait" type="number" min="0" step="0.1" value="0.5"><span class="u">s</span></div></label>
+            <label class="f"><span class="l">Capas base</span><div class="in"><input id="bLayers" type="number" min="0" step="1" value="5"><span class="u">capas</span></div></label>
+            <label class="f"><span class="l">Exposición base</span><div class="in"><input id="bExp" type="number" min="0" step="0.5" value="20"><span class="u">s</span></div></label>
+            <label class="f"><span class="l">Off time + espera base</span><div class="in"><input id="bWait" type="number" min="0" step="0.1" value="2"><span class="u">s</span></div></label>
+            <label class="f"><span class="l">Distancia de elevación</span><div class="in"><input id="liftDist" type="number" min="0" step="0.5" value="8"><span class="u">mm</span></div></label>
+            <label class="f"><span class="l">Velocidad subida / bajada</span><div class="in"><input id="liftSpeed" type="number" min="0.1" step="0.5" value="6"><span class="u">mm/s</span></div></label>
+          </div>
+          <p class="hint">Vienen de tu perfil "ABS-Like Pro 2 Blanca" en Photon Workshop. El tiempo real puede variar un poco; si Workshop te da otro tiempo al laminar, escríbelo en "Horas manuales".</p>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2><span class="n">04</span>Costos y ganancia</h2>
+        <div class="grid">
+          <label class="f"><span class="l">Tarifa eléctrica</span>
+            <div class="in"><span class="u" style="border-left:0;border-right:1px solid var(--line)">$</span><input id="elec" type="number" min="0" step="0.01" value="0"><span class="u">/h</span></div></label>
+          <label class="f"><span class="l">Vida útil del equipo</span>
+            <div class="in"><input id="lifeHours" type="number" min="1" step="100" value="2000"><span class="u">h</span></div></label>
+          <label class="f"><span class="l">Impresiones al mes</span>
+            <div class="in"><input id="printsMonth" type="number" min="1" step="1" value="14"><span class="u">imp.</span></div></label>
+          <label class="f"><span class="l">Postprocesado por pieza</span>
+            <div class="in"><input id="postMin" type="number" min="0" step="1" value="15"><span class="u">min</span></div></label>
+          <label class="f"><span class="l">Diseño / modelado (pedido)</span>
+            <div class="in"><input id="designH" type="number" min="0" step="0.25" value="0"><span class="u">h</span></div></label>
+          <label class="f"><span class="l">Tu tarifa por hora</span>
+            <div class="in"><span class="u" style="border-left:0;border-right:1px solid var(--line)">$</span><input id="hourRate" type="number" min="0" step="0.5" value="0"><span class="u">/h</span></div></label>
+          <label class="f"><span class="l">Margen por fallos</span>
+            <div class="in"><input id="risk" type="number" min="0" step="1" value="10"><span class="u">%</span></div></label>
+          <label class="f"><span class="l">Ganancia</span>
+            <div class="in"><input id="profit" type="number" min="0" step="5" value="0"><span class="u">%</span></div></label>
+          <label class="f"><span class="l">Redondear precio a</span>
+            <div class="in"><select id="round"><option value="0.01">$0,01</option><option value="0.5" selected>$0,50</option><option value="1">$1,00</option></select></div></label>
+        </div>
+        <p class="hint" id="derived"></p>
+        <p class="hint">Vida útil: horas de impresión en las que repartes lo que pagaste por la impresora y el equipo. Impresiones al mes: cuántas veces usas la impresora al mes; los consumibles mensuales se reparten entre ellas. Postprocesado: quitar soportes, lavar, curar y lijar, por cada pieza. Diseño o modelado: horas que trabajas en el archivo de este pedido (modelar, escalar, reparar, poner soportes); se cobra una sola vez por pedido. Déjalo en 0 si el cliente te da el archivo listo.</p>
+        <div class="btns" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+          <button type="button" id="saveDefaults">Guardar como mis valores</button>
+          <button type="button" id="resetDefaults">Volver a los valores iniciales</button>
+        </div>
+        <div class="toast" id="saveMsg" role="status"></div>
+      </section>
+
+      <section class="card">
+        <h2><span class="n">05</span>Inversión y gastos fijos</h2>
+        <div class="inv-sum" id="invSum"></div>
+        <div class="tablewrap">
+          <table class="inv" aria-label="Inventario de inversión y gastos">
+            <thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Frecuencia</th><th>Cant.</th><th>Costo unit.</th><th>Total</th><th><span class="sr">Quitar</span></th></tr></thead>
+            <tbody id="invBody"></tbody>
+          </table>
+        </div>
+        <div class="btns" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+          <button type="button" id="addRow">Agregar compra</button>
+        </div>
+        <p class="hint">Frecuencia "Única" se reparte en la vida útil del equipo (amortización por hora). "Mensual" se reparte entre tus impresiones del mes. "Variable" (la resina) ya se cobra por mililitro en la sección 02, así que aquí solo suma al total invertido.</p>
+      </section>
+
+      <section class="card">
+        <h2><span class="n">06</span>Pasar mis datos a otro dispositivo</h2>
+        <p class="hint" style="margin-top:0">"Exportar mis datos" copia tus precios, tarifas e inventario como texto. Envíatelo (por WhatsApp o correo), y en el otro celular o computadora toca "Importar datos" y pégalo.</p>
+        <div class="btns" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+          <button type="button" id="exportBtn">Exportar mis datos</button>
+          <button type="button" id="importToggle" aria-expanded="false" aria-controls="importBox">Importar datos</button>
+        </div>
+        <div class="toast" id="dataMsg" role="status"></div>
+        <div id="importBox" hidden>
+          <label class="f" style="margin-top:8px"><span class="l">Pega aquí el texto exportado</span>
+            <textarea id="importText" spellcheck="false" style="min-height:120px;margin-top:0"></textarea></label>
+          <div class="btns"><button type="button" class="primary" id="importApply">Aplicar y guardar</button></div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="summary">
+      <div class="card">
+        <div class="price-label">Precio sugerido</div>
+        <div class="price" id="total">$0</div>
+        <div class="per" id="perPiece">$0 por pieza</div>
+        <div class="time" id="timeLine"></div>
+        <div class="status" id="status"></div>
+        <table aria-label="Desglose de costos">
+          <tbody id="breakdown"></tbody>
+        </table>
+        <div class="btns">
+          <button type="button" class="primary" id="copyBtn">Copiar cotización para WhatsApp</button>
+        </div>
+        <div class="toast" id="copyMsg" role="status"></div>
+        <textarea id="msg" aria-label="Mensaje de cotización" spellcheck="false"></textarea>
+        <p class="note">Puedes editar el mensaje antes de copiarlo. Si el botón no copia, selecciona el texto y cópialo a mano.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+function showError(msg) {
+  const box = document.getElementById("errAlert");
+  if (!box) return;
+  document.getElementById("errText").textContent = msg + " Si sigue pasando, toca el botón para empezar de cero (tu inventario y precios guardados se borran).";
+  box.hidden = false;
+}
+window.addEventListener("error", e => showError(e.message || "Error desconocido."));
+window.addEventListener("unhandledrejection", e => showError((e.reason && e.reason.message) || "Error desconocido."));
+document.getElementById("jsAlert").hidden = true;
+document.getElementById("hardReset").addEventListener("click", () => {
+  try { localStorage.removeItem("bl-cotizador"); } catch (e) {}
+  location.reload();
+});
+/*CORE-START*/
+function parseSTL(buffer) {
+  const dv = new DataView(buffer);
+  let n = 0, vol = 0;
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  const add = (a, b, c) => {
+    vol += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6;
+    for (const p of [a, b, c]) for (let k = 0; k < 3; k++) { if (p[k] < min[k]) min[k] = p[k]; if (p[k] > max[k]) max[k] = p[k]; }
+    n++;
+  };
+  const isBinary = buffer.byteLength >= 84 && (84 + dv.getUint32(80, true) * 50 === buffer.byteLength);
+  if (isBinary) {
+    const count = dv.getUint32(80, true);
+    for (let i = 0; i < count; i++) {
+      const o = 84 + i * 50 + 12;
+      const v = [0, 1, 2].map(j => [dv.getFloat32(o + j * 12, true), dv.getFloat32(o + j * 12 + 4, true), dv.getFloat32(o + j * 12 + 8, true)]);
+      add(v[0], v[1], v[2]);
+    }
+  } else {
+    const text = new TextDecoder().decode(buffer);
+    const re = /vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)/g;
+    let m, cur = [];
+    while ((m = re.exec(text)) !== null) {
+      cur.push([parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])]);
+      if (cur.length === 3) { add(cur[0], cur[1], cur[2]); cur = []; }
+    }
+  }
+  const size = n ? max.map((v, k) => v - min[k]) : [0, 0, 0];
+  return { triangles: n, volumeMm3: Math.abs(vol), size };
+}
+
+const PLATE = { x: 223, y: 126, z: 230 };
+const PACKING = 0.65; // parte de la placa que de verdad se puede llenar, con separación entre piezas
+function autoPlates(pieces) {
+  let area = 0;
+  for (const pc of pieces) {
+    const q = Math.max(0, Math.round(pc.qty || 0));
+    if (pc.x > 0 && pc.y > 0) area += (pc.x + 5) * (pc.y + 5) * q;
+  }
+  return Math.max(1, Math.ceil(area / (PLATE.x * PLATE.y * PACKING)));
+}
+
+function printHours(p, height) {
+  const liftTime = p.liftSpeed > 0 ? 2 * p.liftDist / p.liftSpeed : 0;
+  const totalLayers = p.layer > 0 ? Math.ceil((height + p.zlift) / p.layer) : 0;
+  const bLayers = Math.min(p.bLayers, totalLayers);
+  const secs = bLayers * (p.bExp + p.bWait + liftTime) + (totalLayers - bLayers) * (p.exp + p.off + p.wait + liftTime);
+  return { totalLayers, hours: secs / 3600 };
+}
+
+function quote(p) {
+  const pieces = (p.pieces || []).filter(pc => (pc.qty || 0) > 0);
+  if (!pieces.length) return { qty: 0, prints: 0, maxH: 0, volTotal: 0, resinMl: 0, resinG: 0, resinCost: 0, totalLayers: 0, hoursPerPrint: 0, totalHours: 0,
+    amortCost: 0, elecCost: 0, supplies: 0, labor: 0, riskCost: 0, cost: 0, total: 0, perPiece: 0, profitAmount: 0 };
+  const qty = Math.max(1, pieces.reduce((a, pc) => a + Math.round(pc.qty), 0));
+  const volTotal = pieces.reduce((a, pc) => a + (pc.vol || 0) * Math.round(pc.qty), 0);
+  const maxH = pieces.reduce((a, pc) => Math.max(a, pc.h || 0), 0);
+  const prints = p.platesManual > 0 ? Math.round(p.platesManual) : autoPlates(pieces);
+  const resinMl = volTotal * (1 + p.waste / 100);
+  const resinG = resinMl * p.density;
+  const resinCost = p.bottleG > 0 ? resinG / p.bottleG * p.bottlePrice : 0;
+  const est = printHours(p, maxH);
+  const hoursPerPrint = p.manualHours > 0 ? p.manualHours : est.hours;
+  const amortCost = prints * hoursPerPrint * (p.amortPerHour || 0);
+  const elecCost = prints * hoursPerPrint * p.elec;
+  const supplies = prints * (p.suppliesPerPrint || 0);
+  const labor = (qty * p.postMin / 60 + p.designH) * p.hourRate;
+  const subtotal = resinCost + amortCost + elecCost + supplies + labor;
+  const riskCost = subtotal * p.risk / 100;
+  const cost = subtotal + riskCost;
+  const raw = cost * (1 + p.profit / 100);
+  const step = p.round > 0 ? p.round : 0.01;
+  const total = Math.max(0, Math.ceil(raw / step - 1e-9) * step);
+  return { qty, prints, maxH, volTotal, resinMl, resinG, resinCost, totalLayers: est.totalLayers, hoursPerPrint, totalHours: prints * hoursPerPrint,
+    amortCost, elecCost, supplies, labor, riskCost, cost, total, perPiece: total / qty, profitAmount: total - cost };
+}
+
+function invSummary(rows, lifeHours, printsMonth) {
+  let once = 0, monthly = 0, variable = 0;
+  for (const r of rows) {
+    const t = (parseFloat(r.qty) || 0) * (parseFloat(r.cost) || 0);
+    if (r.freq === "Única") once += t; else if (r.freq === "Mensual") monthly += t; else variable += t;
+  }
+  return { once, monthly, variable, total: once + monthly + variable,
+    amortPerHour: lifeHours > 0 ? once / lifeHours : 0,
+    suppliesPerPrint: printsMonth > 0 ? monthly / printsMonth : 0 };
+}
+
+function fitsPlate(size, zlift) {
+  const [x, y, z] = size;
+  const flat = (x <= PLATE.x && y <= PLATE.y) || (y <= PLATE.x && x <= PLATE.y);
+  return flat && z + zlift <= PLATE.z;
+}
+/*CORE-END*/
+
+const FIELDS = ["name","platesManual","resin","bottlePrice","bottleG","density","waste","zlift","manualHours","layer","exp","off","wait","bLayers","bExp","bWait","liftDist","liftSpeed","elec","lifeHours","printsMonth","postMin","designH","hourRate","risk","profit","round"];
+const DEFAULT_INV = [];
+let inv = DEFAULT_INV.map(r => ({ ...r }));
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+const TEXT = new Set(["name","resin"]);
+const PIECE = new Set(["name","platesManual","manualHours"]);
+const EXAMPLE = { name: "Maqueta de prueba (ejemplo)", vol: 25, h: 62, x: 0, y: 0, qty: 1, example: true };
+let pieces = [{ ...EXAMPLE }];
+const $ = id => document.getElementById(id);
+const initial = {};
+FIELDS.forEach(f => initial[f] = $(f).value);
+
+const money = n => "$" + (Math.round(n * 100) / 100).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (n, d = 1) => n.toLocaleString("es-EC", { minimumFractionDigits: d, maximumFractionDigits: d });
+function hoursText(h) {
+  const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+  return mm === 60 ? (hh + 1) + " h" : (hh ? hh + " h " : "") + mm + " min";
+}
+
+function read() {
+  const p = {};
+  FIELDS.forEach(f => {
+    const v = $(f).value;
+    p[f] = TEXT.has(f) ? v.trim() : (parseFloat(v) || 0);
+  });
+  return p;
+}
+
+function renderInv() {
+  const freqs = ["Única", "Mensual", "Variable"];
+  if (!inv.length) {
+    $("invBody").innerHTML = '<tr><td colspan="8" style="padding:12px;color:var(--muted)">Sin compras registradas. Toca "Agregar compra" para anotar tu impresora, equipo y consumibles.</td></tr>';
+    return;
+  }
+  $("invBody").innerHTML = inv.map((r, i) => `<tr>
+    <td><input type="date" data-i="${i}" data-k="date" value="${esc(r.date)}" aria-label="Fecha"></td>
+    <td><input type="text" data-i="${i}" data-k="cat" value="${esc(r.cat)}" aria-label="Categoría"></td>
+    <td><input type="text" data-i="${i}" data-k="desc" value="${esc(r.desc)}" aria-label="Descripción"></td>
+    <td><select data-i="${i}" data-k="freq" aria-label="Frecuencia">${freqs.map(f => `<option${f === r.freq ? " selected" : ""}>${f}</option>`).join("")}</select></td>
+    <td><input type="number" min="0" step="1" data-i="${i}" data-k="qty" value="${esc(r.qty)}" aria-label="Cantidad"></td>
+    <td><input type="number" min="0" step="0.01" data-i="${i}" data-k="cost" value="${esc(r.cost)}" aria-label="Costo unitario"></td>
+    <td class="t" id="rowT${i}"></td>
+    <td><button type="button" class="x" data-del="${i}" aria-label="Quitar ${esc(r.desc)}">×</button></td>
+  </tr>`).join("");
+}
+
+function renderPieces() {
+  $("pieceBody").innerHTML = pieces.length ? pieces.map((pc, i) => `<tr>
+    <td><input type="text" data-p="${i}" data-k="name" value="${esc(pc.name)}" aria-label="Nombre de la pieza"></td>
+    <td><input type="number" min="0" step="0.1" data-p="${i}" data-k="vol" value="${esc(pc.vol)}" aria-label="Volumen en ml"></td>
+    <td><input type="number" min="0" step="0.1" data-p="${i}" data-k="h" value="${esc(pc.h)}" aria-label="Alto en mm"></td>
+    <td class="t">${pc.x > 0 ? num(pc.x) + " × " + num(pc.y) : "—"}</td>
+    <td><input type="number" min="0" step="1" data-p="${i}" data-k="qty" value="${esc(pc.qty)}" aria-label="Cantidad"></td>
+    <td><button type="button" class="x" data-delp="${i}" aria-label="Quitar ${esc(pc.name)}">×</button></td>
+  </tr>`).join("") : '<tr><td colspan="6" style="padding:12px;color:var(--muted)">Sin piezas. Sube STL o agrega una pieza a mano.</td></tr>';
+}
+
+function render() {
+  try { renderUnsafe(); $("errAlert").hidden = true; }
+  catch (e) { showError(e.message); }
+}
+function renderUnsafe() {
+  const p = read();
+  const s = invSummary(inv, p.lifeHours, p.printsMonth);
+  p.amortPerHour = s.amortPerHour;
+  p.suppliesPerPrint = s.suppliesPerPrint;
+  p.pieces = pieces.map(pc => ({ ...pc, vol: parseFloat(pc.vol) || 0, h: parseFloat(pc.h) || 0, qty: parseFloat(pc.qty) || 0 }));
+  const q = quote(p);
+  $("platesManual").placeholder = "auto: " + autoPlates(p.pieces);
+
+  inv.forEach((r, i) => { const c = $("rowT" + i); if (c) c.textContent = money((parseFloat(r.qty) || 0) * (parseFloat(r.cost) || 0)); });
+  $("invSum").innerHTML =
+    `<div class="key"><b>${money(s.total)}</b><span>Total invertido</span></div>`
+    + `<div><b>${money(s.once)}</b><span>Equipo (se amortiza)</span></div>`
+    + `<div><b>${money(s.monthly)}</b><span>Consumibles al mes</span></div>`
+    + `<div><b>${money(s.amortPerHour)}</b><span>Amortización por hora</span></div>`;
+  $("derived").textContent = `Con tu inventario: el equipo cuesta ${money(s.amortPerHour)} por hora de impresión y los consumibles ${money(s.suppliesPerPrint)} por impresión.`;
+  $("setupAlert").hidden = !(p.bottlePrice === 0 && p.elec === 0 && p.hourRate === 0 && p.profit === 0 && s.total === 0);
+  $("total").textContent = money(q.total);
+  $("perPiece").textContent = q.qty === 0 ? "Agrega al menos una pieza" : q.qty > 1 ? q.qty + " piezas · " + money(q.perPiece) + " por pieza en promedio" : "1 pieza";
+
+  $("timeLine").innerHTML = `Tiempo de impresión <b>${hoursText(q.totalHours)}</b>`
+    + (q.prints > 1 ? `${q.prints} placas de ${hoursText(q.hoursPerPrint)}` : `1 placa · ${p.manualHours > 0 ? "tomado de Horas manuales" : "lo marca la pieza más alta (" + num(q.maxH, 0) + " mm)"}`);
+  const chips = [];
+  if (p.printsMonth <= 0) chips.push('<span class="chip warn">Impresiones al mes en 0: los consumibles no se están cobrando</span>');
+  chips.push(`<span class="chip">${num(q.resinMl, 0)} ml de resina</span>`);
+  chips.push(`<span class="chip">${q.prints} placa${q.prints > 1 ? "s" : ""}${p.platesManual > 0 ? " (manual)" : ""}</span>`);
+  const big = p.pieces.filter(pc => (pc.x > 0 && !fitsPlate([pc.x, pc.y, pc.h], p.zlift)) || pc.h + p.zlift > PLATE.z);
+  if (big.length) chips.push(`<span class="chip bad">No cabe en la M7 Pro: ${esc(big.map(pc => pc.name).join(", "))}</span>`);
+  else if (p.pieces.some(pc => pc.x > 0)) chips.push('<span class="chip ok">Todo cabe en la M7 Pro</span>');
+  if (q.profitAmount > 0 && s.total > 0) {
+    const n = Math.ceil(s.total / q.profitAmount);
+    chips.push(`<span class="chip">Recuperas la inversión en ~${n.toLocaleString("es-EC")} pedidos así</span>`);
+  }
+  $("status").innerHTML = chips.join("");
+
+  const rows = [
+    ["Resina", `${num(q.resinG, 0)} g con ${num(p.waste, 0)} % de soportes`, q.resinCost],
+    ["Amortización de equipo", `${num(q.totalHours, 1)} h × ${money(p.amortPerHour)}`, q.amortCost],
+    ["Electricidad", `${num(q.totalHours, 1)} h × ${money(p.elec)}`, q.elecCost],
+    ["Consumibles", `${q.prints} impresión${q.prints > 1 ? "es" : ""} × ${money(p.suppliesPerPrint)}`, q.supplies],
+    ["Mano de obra", `${num(q.qty * p.postMin / 60 + p.designH, 2)} h × ${money(p.hourRate)}`, q.labor],
+    ["Margen por fallos", `${num(p.risk, 0)} %`, q.riskCost],
+    ["Costo real", "", q.cost],
+    ["Ganancia", `${num(p.profit, 0)} % más el redondeo`, q.profitAmount],
+  ];
+  $("breakdown").innerHTML = rows.map(([a, b, v], i) =>
+    `<tr${i === 6 ? ' style="font-weight:600"' : ""}><td>${a}${b ? `<small>${b}</small>` : ""}</td><td class="v">${money(v)}</td></tr>`
+  ).join("") + `<tr class="total"><td>Precio al cliente</td><td class="v">${money(q.total)}</td></tr>`;
+
+  const name = p.name.trim();
+  const list = p.pieces.filter(pc => pc.qty > 0).map(pc => `• ${pc.name.replace(/\s*\(ejemplo\)\s*/i, "")}${pc.qty > 1 ? " × " + pc.qty : ""}`);
+  const lines = [
+    "🧱 *Cotización · Bloque Libre*",
+    "",
+    ...(name ? [`Pedido: ${name}`] : []),
+    ...(list.length > 1 ? ["Piezas:", ...list] : [`Pieza: ${list[0] ? list[0].slice(2) : "Pieza impresa en 3D"}`]),
+    `Cantidad total: ${q.qty}`,
+    `Material: resina ${p.resin || "de alta definición"}`,
+    `Tiempo de impresión estimado: ${hoursText(q.totalHours)}`,
+    "",
+    `💲 *Total: ${money(q.total)}*` + (q.qty > 1 && p.pieces.filter(pc => pc.qty > 0).length === 1 ? ` (${money(q.perPiece)} c/u)` : ""),
+    "",
+    "Incluye impresión, limpieza y curado UV.",
+    "Cotización válida por 7 días.",
+    "Si estás de acuerdo, te envío los datos de pago para confirmar tu pedido 😊",
+  ];
+  $("msg").value = lines.join("\n");
+}
+
+function collectData() {
+  const data = { inv };
+  FIELDS.filter(f => !PIECE.has(f)).forEach(f => data[f] = $(f).value);
+  return data;
+}
+
+// Aplica datos guardados o importados. Devuelve true si encontró algo útil.
+function applyData(saved, replaceInv) {
+  if (!saved || typeof saved !== "object" || Array.isArray(saved)) return false;
+  let found = false;
+  Object.keys(saved).forEach(f => {
+    if (f !== "inv" && FIELDS.includes(f) && !PIECE.has(f) && saved[f] != null) { $(f).value = String(saved[f]).replace(",", "."); found = true; }
+  });
+  if (Array.isArray(saved.inv)) {
+    const ok = saved.inv.filter(r => r && typeof r === "object")
+      .map(r => ({ date: String(r.date || ""), cat: String(r.cat || ""), desc: String(r.desc || ""),
+        freq: ["Única", "Mensual", "Variable"].includes(r.freq) ? r.freq : "Única", qty: r.qty != null ? r.qty : 1, cost: r.cost != null ? r.cost : 0 }));
+    if (ok.length || replaceInv) inv = ok;
+    found = true;
+  }
+  return found;
+}
+
+function load() {
+  try { applyData(JSON.parse(localStorage.getItem("bl-cotizador") || "null"), false); } catch (e) {}
+}
+
+$("invBody").addEventListener("input", e => {
+  const t = e.target, i = t.dataset.i, k = t.dataset.k;
+  if (i === undefined || !k) return;
+  inv[i][k] = t.value;
+  render();
+});
+$("invBody").addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.k === "freq") { inv[t.dataset.i].freq = t.value; render(); }
+});
+$("invBody").addEventListener("click", e => {
+  const b = e.target.closest("button[data-del]");
+  if (!b) return;
+  inv.splice(Number(b.dataset.del), 1);
+  renderInv(); render();
+});
+$("addRow").addEventListener("click", () => {
+  inv.push({ date: new Date().toISOString().slice(0, 10), cat: "Consumibles", desc: "", freq: "Mensual", qty: 1, cost: 0 });
+  renderInv(); render();
+  const last = document.querySelector(`#invBody tr:last-child input[data-k="desc"]`);
+  if (last) last.focus();
+});
+
+$("saveDefaults").addEventListener("click", () => {
+  const data = collectData();
+  try { localStorage.setItem("bl-cotizador", JSON.stringify(data)); $("saveMsg").textContent = "Listo: este navegador recordará tus precios y tarifas."; }
+  catch (e) { $("saveMsg").textContent = "Este navegador no permite guardar. Los valores se mantienen mientras la página esté abierta."; }
+});
+$("resetDefaults").addEventListener("click", () => {
+  FIELDS.filter(f => !PIECE.has(f)).forEach(f => $(f).value = initial[f]);
+  inv = DEFAULT_INV.map(r => ({ ...r }));
+  try { localStorage.removeItem("bl-cotizador"); } catch (e) {}
+  $("saveMsg").textContent = "Valores iniciales restaurados.";
+  renderInv(); render();
+});
+
+$("exportBtn").addEventListener("click", async () => {
+  const text = JSON.stringify({ app: "cotizador-bloque-libre", version: 1, ...collectData() });
+  try {
+    await navigator.clipboard.writeText(text);
+    $("dataMsg").textContent = "Copiado. Pégalo en un chat o correo para ti y ábrelo en el otro dispositivo.";
+  } catch (e) {
+    $("importBox").hidden = false;
+    $("importToggle").setAttribute("aria-expanded", "true");
+    $("importText").value = text;
+    $("importText").focus(); $("importText").select();
+    $("dataMsg").textContent = "No se pudo copiar automáticamente: el texto quedó seleccionado abajo, cópialo con Ctrl+C o mantén presionado.";
+  }
+});
+$("importToggle").addEventListener("click", () => {
+  const box = $("importBox");
+  box.hidden = !box.hidden;
+  $("importToggle").setAttribute("aria-expanded", String(!box.hidden));
+  if (!box.hidden) { $("importText").value = ""; $("importText").focus(); }
+});
+$("importApply").addEventListener("click", () => {
+  let data;
+  try { data = JSON.parse($("importText").value.trim()); }
+  catch (e) { $("dataMsg").textContent = "Ese texto no es válido. Copia de nuevo todo el texto exportado, desde la primera { hasta la última }."; return; }
+  if (!data || data.app !== "cotizador-bloque-libre" || !applyData(data, true)) {
+    $("dataMsg").textContent = "Ese texto no viene de \"Exportar mis datos\" de este cotizador.";
+    return;
+  }
+  let saved = true;
+  try { localStorage.setItem("bl-cotizador", JSON.stringify(collectData())); } catch (e) { saved = false; }
+  renderInv(); render();
+  $("importText").value = "";
+  $("importBox").hidden = true;
+  $("importToggle").setAttribute("aria-expanded", "false");
+  $("dataMsg").textContent = saved ? "Datos importados y guardados en este dispositivo." : "Datos importados, pero este navegador no permite guardarlos: se perderán al cerrar la página.";
+});
+
+$("copyBtn").addEventListener("click", async () => {
+  const text = $("msg").value;
+  try { await navigator.clipboard.writeText(text); $("copyMsg").textContent = "Copiado. Pégalo en el chat de WhatsApp."; }
+  catch (e) { $("msg").focus(); $("msg").select(); $("copyMsg").textContent = "No se pudo copiar automáticamente: el texto quedó seleccionado, cópialo con Ctrl+C o mantén presionado."; }
+});
+
+async function handleFiles(fileList) {
+  const files = Array.from(fileList || []).filter(f => /\.stl$/i.test(f.name));
+  if (!files.length) return;
+  const info = $("stlInfo");
+  info.innerHTML = `<span class="chip">Leyendo ${files.length} archivo${files.length > 1 ? "s" : ""}…</span>`;
+  if (pieces.length === 1 && pieces[0].example) pieces = [];
+  const notes = [];
+  for (const file of files) {
+    try {
+      const r = parseSTL(await file.arrayBuffer());
+      if (!r.triangles) throw new Error("vacío");
+      const [x, y, z] = r.size;
+      pieces.push({ name: file.name.replace(/\.stl$/i, ""), vol: +(r.volumeMm3 / 1000).toFixed(2), h: +z.toFixed(1), x, y, qty: 1 });
+      if (Math.max(x, y, z) < 5) notes.push(`<span class="chip warn">${esc(file.name)}: medidas muy pequeñas, quizá está en pulgadas o metros</span>`);
+    } catch (e) {
+      notes.push(`<span class="chip bad">No pude leer ${esc(file.name)}. Revisa que sea un STL válido.</span>`);
+    }
+  }
+  info.innerHTML = `<span class="chip ok">${files.length} archivo${files.length > 1 ? "s" : ""} agregado${files.length > 1 ? "s" : ""}</span>` + notes.join("");
+  $("stl").value = "";
+  renderPieces(); render();
+}
+$("stl").addEventListener("change", e => handleFiles(e.target.files));
+const drop = $("drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
+
+$("pieceBody").addEventListener("input", e => {
+  const t = e.target, i = t.dataset.p, k = t.dataset.k;
+  if (i === undefined || !k) return;
+  pieces[i][k] = t.value;
+  pieces[i].example = false;
+  render();
+});
+$("pieceBody").addEventListener("click", e => {
+  const b = e.target.closest("button[data-delp]");
+  if (!b) return;
+  pieces.splice(Number(b.dataset.delp), 1);
+  renderPieces(); render();
+});
+$("addPiece").addEventListener("click", () => {
+  if (pieces.length === 1 && pieces[0].example) pieces = [];
+  pieces.push({ name: "Pieza " + (pieces.length + 1), vol: 0, h: 0, x: 0, y: 0, qty: 1 });
+  renderPieces(); render();
+  const last = document.querySelector('#pieceBody tr:last-child input[data-k="name"]');
+  if (last) last.focus();
+});
+$("clearPieces").addEventListener("click", () => {
+  pieces = []; $("stlInfo").innerHTML = ""; $("platesManual").value = "";
+  renderPieces(); render();
+});
+
+FIELDS.forEach(f => $(f).addEventListener("input", render));
+load();
+renderInv();
+renderPieces();
+render();
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
