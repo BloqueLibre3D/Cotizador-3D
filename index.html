@@ -123,7 +123,7 @@ table.inv input:focus, table.inv select:focus { border-color: var(--accent); out
 table.inv td.t { text-align: right; font-family: var(--font-mono); white-space: nowrap; padding-right: 8px; }
 table.inv tfoot td { font-weight: 600; border-top: 2px solid var(--ink); border-bottom: 0; padding: 8px 6px; }
 button.x { padding: 4px 9px; font-size: 14px; border-color: var(--line); color: var(--muted); }
-table.pieces { min-width: 560px; }
+table.pieces { min-width: 640px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -159,7 +159,7 @@ table.pieces { min-width: 560px; }
         <div class="stl-info" id="stlInfo"></div>
         <div class="tablewrap" style="margin-top:14px">
           <table class="inv pieces" aria-label="Piezas del pedido">
-            <thead><tr><th>Pieza</th><th>Volumen (ml)</th><th>Alto (mm)</th><th>Base (mm)</th><th>Cant.</th><th><span class="sr">Quitar</span></th></tr></thead>
+            <thead><tr><th>Pieza</th><th>Escala (%)</th><th>Alto (mm)</th><th>Volumen (ml)</th><th>Base (mm)</th><th>Cant.</th><th><span class="sr">Quitar</span></th></tr></thead>
             <tbody id="pieceBody"></tbody>
           </table>
         </div>
@@ -173,6 +173,7 @@ table.pieces { min-width: 560px; }
           <button type="button" id="addPiece">Agregar pieza a mano</button>
           <button type="button" id="clearPieces">Vaciar lista</button>
         </div>
+        <p class="hint">Para cambiar el tamaño, escribe la escala en % o directamente el alto que quiere el cliente: el volumen, la base y el precio se recalculan solos. Ojo: al 50 % de alto la pieza usa 1/8 de la resina. Si el STL vino en pulgadas, una escala de 2540 % lo pasa a milímetros.</p>
         <p class="hint" id="plateHint">Todas las piezas se imprimen juntas: el tiempo lo marca la pieza más alta, y la máquina, la luz y los consumibles se cobran por placa, no por pieza. En "auto" el cotizador calcula cuántas placas hacen falta según el espacio que ocupan las bases.</p>
       </section>
 
@@ -416,7 +417,15 @@ let inv = DEFAULT_INV.map(r => ({ ...r }));
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 const TEXT = new Set(["name","resin"]);
 const PIECE = new Set(["name","platesManual","manualHours"]);
-const EXAMPLE = { name: "Maqueta de prueba (ejemplo)", vol: 25, h: 62, x: 0, y: 0, qty: 1, example: true };
+const EXAMPLE = { name: "Maqueta de prueba (ejemplo)", vol0: 25, h0: 62, x0: 0, y0: 0, scale: 100, qty: 1, example: true };
+// Escala: el alto y la base cambian en proporción directa; el volumen cambia al cubo (50 % de alto = 1/8 de resina).
+function scaled(pc) {
+  const k = (parseFloat(pc.scale) || 0) / 100;
+  return { name: pc.name, qty: parseFloat(pc.qty) || 0, scale: parseFloat(pc.scale) || 0,
+    vol: (parseFloat(pc.vol0) || 0) * k * k * k, h: (parseFloat(pc.h0) || 0) * k, x: (pc.x0 || 0) * k, y: (pc.y0 || 0) * k };
+}
+const r1 = n => String(Math.round(n * 10) / 10);
+const r2 = n => String(Math.round(n * 100) / 100);
 let pieces = [{ ...EXAMPLE }];
 const $ = id => document.getElementById(id);
 const initial = {};
@@ -456,15 +465,17 @@ function renderInv() {
   </tr>`).join("");
 }
 
+function baseText(sc) { return sc.x > 0 ? num(sc.x) + " × " + num(sc.y) : "—"; }
 function renderPieces() {
-  $("pieceBody").innerHTML = pieces.length ? pieces.map((pc, i) => `<tr>
+  $("pieceBody").innerHTML = pieces.length ? pieces.map((pc, i) => { const sc = scaled(pc); return `<tr>
     <td><input type="text" data-p="${i}" data-k="name" value="${esc(pc.name)}" aria-label="Nombre de la pieza"></td>
-    <td><input type="number" min="0" step="0.1" data-p="${i}" data-k="vol" value="${esc(pc.vol)}" aria-label="Volumen en ml"></td>
-    <td><input type="number" min="0" step="0.1" data-p="${i}" data-k="h" value="${esc(pc.h)}" aria-label="Alto en mm"></td>
-    <td class="t">${pc.x > 0 ? num(pc.x) + " × " + num(pc.y) : "—"}</td>
+    <td><input type="number" min="1" step="5" data-p="${i}" data-k="scale" value="${esc(r1(sc.scale))}" aria-label="Escala en porcentaje"></td>
+    <td><input type="number" min="0" step="0.5" data-p="${i}" data-k="h" value="${esc(r1(sc.h))}" aria-label="Alto en mm"></td>
+    <td><input type="number" min="0" step="0.1" data-p="${i}" data-k="vol" value="${esc(r2(sc.vol))}" aria-label="Volumen en ml"></td>
+    <td class="t" data-base="${i}">${baseText(sc)}</td>
     <td><input type="number" min="0" step="1" data-p="${i}" data-k="qty" value="${esc(pc.qty)}" aria-label="Cantidad"></td>
     <td><button type="button" class="x" data-delp="${i}" aria-label="Quitar ${esc(pc.name)}">×</button></td>
-  </tr>`).join("") : '<tr><td colspan="6" style="padding:12px;color:var(--muted)">Sin piezas. Sube STL o agrega una pieza a mano.</td></tr>';
+  </tr>`; }).join("") : '<tr><td colspan="7" style="padding:12px;color:var(--muted)">Sin piezas. Sube STL o agrega una pieza a mano.</td></tr>';
 }
 
 function render() {
@@ -476,7 +487,7 @@ function renderUnsafe() {
   const s = invSummary(inv, p.lifeHours, p.printsMonth);
   p.amortPerHour = s.amortPerHour;
   p.suppliesPerPrint = s.suppliesPerPrint;
-  p.pieces = pieces.map(pc => ({ ...pc, vol: parseFloat(pc.vol) || 0, h: parseFloat(pc.h) || 0, qty: parseFloat(pc.qty) || 0 }));
+  p.pieces = pieces.map(scaled);
   const q = quote(p);
   $("platesManual").placeholder = "auto: " + autoPlates(p.pieces);
 
@@ -498,6 +509,7 @@ function renderUnsafe() {
   chips.push(`<span class="chip">${num(q.resinMl, 0)} ml de resina</span>`);
   chips.push(`<span class="chip">${q.prints} placa${q.prints > 1 ? "s" : ""}${p.platesManual > 0 ? " (manual)" : ""}</span>`);
   const big = p.pieces.filter(pc => (pc.x > 0 && !fitsPlate([pc.x, pc.y, pc.h], p.zlift)) || pc.h + p.zlift > PLATE.z);
+  if (p.pieces.some(pc => pc.qty > 0 && pc.scale < 100)) chips.push('<span class="chip warn">Pieza reducida: revisa en Workshop que paredes y detalles no queden de menos de 0,5 mm</span>');
   if (big.length) chips.push(`<span class="chip bad">No cabe en la M7 Pro: ${esc(big.map(pc => pc.name).join(", "))}</span>`);
   else if (p.pieces.some(pc => pc.x > 0)) chips.push('<span class="chip ok">Todo cabe en la M7 Pro</span>');
   if (q.profitAmount > 0 && s.total > 0) {
@@ -521,7 +533,7 @@ function renderUnsafe() {
   ).join("") + `<tr class="total"><td>Precio al cliente</td><td class="v">${money(q.total)}</td></tr>`;
 
   const name = p.name.trim();
-  const list = p.pieces.filter(pc => pc.qty > 0).map(pc => `• ${pc.name.replace(/\s*\(ejemplo\)\s*/i, "")}${pc.qty > 1 ? " × " + pc.qty : ""}`);
+  const list = p.pieces.filter(pc => pc.qty > 0).map(pc => `• ${pc.name.replace(/\s*\(ejemplo\)\s*/i, "")}${pc.h > 0 ? " · " + num(pc.h, 0) + " mm de alto" : ""}${pc.qty > 1 ? " × " + pc.qty : ""}`);
   const lines = [
     "🧱 *Cotización · Bloque Libre*",
     "",
@@ -657,7 +669,7 @@ async function handleFiles(fileList) {
       const r = parseSTL(await file.arrayBuffer());
       if (!r.triangles) throw new Error("vacío");
       const [x, y, z] = r.size;
-      pieces.push({ name: file.name.replace(/\.stl$/i, ""), vol: +(r.volumeMm3 / 1000).toFixed(2), h: +z.toFixed(1), x, y, qty: 1 });
+      pieces.push({ name: file.name.replace(/\.stl$/i, ""), vol0: r.volumeMm3 / 1000, h0: z, x0: x, y0: y, scale: 100, qty: 1 });
       if (Math.max(x, y, z) < 5) notes.push(`<span class="chip warn">${esc(file.name)}: medidas muy pequeñas, quizá está en pulgadas o metros</span>`);
     } catch (e) {
       notes.push(`<span class="chip bad">No pude leer ${esc(file.name)}. Revisa que sea un STL válido.</span>`);
@@ -676,8 +688,21 @@ drop.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
 $("pieceBody").addEventListener("input", e => {
   const t = e.target, i = t.dataset.p, k = t.dataset.k;
   if (i === undefined || !k) return;
-  pieces[i][k] = t.value;
-  pieces[i].example = false;
+  const pc = pieces[i], v = parseFloat(t.value);
+  pc.example = false;
+  const k3 = () => Math.pow((parseFloat(pc.scale) || 100) / 100, 3);
+  if (k === "name" || k === "qty") pc[k] = t.value;
+  else if (k === "scale") { if (v > 0) pc.scale = v; }
+  else if (k === "h" && v > 0) {
+    if (pc.h0 > 0) pc.scale = v / pc.h0 * 100;          // cambiar el alto escala toda la pieza
+    else pc.h0 = v / ((parseFloat(pc.scale) || 100) / 100);
+  }
+  else if (k === "vol" && v >= 0) pc.vol0 = v / k3();  // corregir el volumen a mano
+  // actualizar las otras celdas de la fila sin perder el foco
+  const row = t.closest("tr"), sc = scaled(pc);
+  const set = (key, val) => { const el = row.querySelector(`input[data-k="${key}"]`); if (el && el !== t) el.value = val; };
+  set("scale", r1(sc.scale)); set("h", r1(sc.h)); set("vol", r2(sc.vol));
+  const b = row.querySelector("[data-base]"); if (b) b.textContent = baseText(sc);
   render();
 });
 $("pieceBody").addEventListener("click", e => {
@@ -688,7 +713,7 @@ $("pieceBody").addEventListener("click", e => {
 });
 $("addPiece").addEventListener("click", () => {
   if (pieces.length === 1 && pieces[0].example) pieces = [];
-  pieces.push({ name: "Pieza " + (pieces.length + 1), vol: 0, h: 0, x: 0, y: 0, qty: 1 });
+  pieces.push({ name: "Pieza " + (pieces.length + 1), vol0: 0, h0: 0, x0: 0, y0: 0, scale: 100, qty: 1 });
   renderPieces(); render();
   const last = document.querySelector('#pieceBody tr:last-child input[data-k="name"]');
   if (last) last.focus();

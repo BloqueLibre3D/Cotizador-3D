@@ -1,7 +1,7 @@
 // Service worker del Cotizador Bloque Libre.
 // Guarda una copia de la app para que funcione sin internet.
 // Si cambias index.html y quieres forzar la actualización, sube el número de versión.
-const CACHE = "bloque-libre-v2";
+const CACHE = "bloque-libre-v3";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", event => {
