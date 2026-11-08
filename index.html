@@ -105,6 +105,7 @@ button:hover { filter: brightness(1.05); }
 textarea { width: 100%; min-height: 190px; font: 13px/1.45 var(--font-mono); border: 1px solid var(--line); background: var(--field); color: var(--ink); padding: 10px; resize: vertical; margin-top: 12px; }
 .note { font-size: 12px; color: var(--muted); margin-top: 10px; }
 .toast { min-height: 18px; font-size: 13px; color: var(--ok); margin-top: 6px; }
+.excel { margin-top: 18px; padding-top: 14px; border-top: 2px solid var(--ink); }
 .alert { border: 2px solid var(--accent); background: var(--panel); padding: 12px 14px; margin-bottom: 16px; font-size: 14px; }
 .alert strong { display: block; margin-bottom: 2px; }
 .alert a { color: var(--accent); word-break: break-all; }
@@ -166,6 +167,8 @@ table.pieces { min-width: 640px; }
         <div class="grid" style="margin-top:12px">
           <label class="f"><span class="l">Nombre del pedido</span>
             <div class="in"><input id="name" type="text" value="" placeholder="Ej.: Figuras para María"></div></label>
+          <label class="f"><span class="l">Cliente</span>
+            <div class="in"><input id="client" type="text" value="" placeholder="Ej.: María López"></div></label>
           <label class="f"><span class="l">Impresiones (placas)</span>
             <div class="in"><input id="platesManual" type="number" min="1" step="1" placeholder="auto"><span class="u">placas</span></div></label>
         </div>
@@ -296,6 +299,13 @@ table.pieces { min-width: 640px; }
         </div>
         <div class="toast" id="copyMsg" role="status"></div>
         <textarea id="msg" aria-label="Mensaje de cotización" spellcheck="false"></textarea>
+        <div class="excel">
+          <div class="price-label">Para tu Excel de finanzas</div>
+          <table aria-label="Valores para el Excel"><tbody id="excelRows"></tbody></table>
+          <div class="btns"><button type="button" id="copyExcel">Copiar fila para Excel</button></div>
+          <div class="toast" id="excelMsg" role="status"></div>
+          <p class="note">En la hoja Ventas, haz clic en la celda de <b>Fecha</b> de una fila vacía y pega: se llenan Fecha, Cliente, Producto, Cant., Precio, Materiales, Reposición y Mano de obra. Luego solo eliges el Estado de pago.</p>
+        </div>
         <p class="note">Puedes editar el mensaje antes de copiarlo. Si el botón no copia, selecciona el texto y cópialo a mano.</p>
       </div>
     </aside>
@@ -411,12 +421,13 @@ function fitsPlate(size, zlift) {
 }
 /*CORE-END*/
 
-const FIELDS = ["name","platesManual","resin","bottlePrice","bottleG","density","waste","zlift","manualHours","layer","exp","off","wait","bLayers","bExp","bWait","liftDist","liftSpeed","elec","lifeHours","printsMonth","postMin","designH","hourRate","risk","profit","round"];
+const FIELDS = ["name","client","platesManual","resin","bottlePrice","bottleG","density","waste","zlift","manualHours","layer","exp","off","wait","bLayers","bExp","bWait","liftDist","liftSpeed","elec","lifeHours","printsMonth","postMin","designH","hourRate","risk","profit","round"];
 const DEFAULT_INV = [];
 let inv = DEFAULT_INV.map(r => ({ ...r }));
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-const TEXT = new Set(["name","resin"]);
-const PIECE = new Set(["name","platesManual","manualHours"]);
+const TEXT = new Set(["name","client","resin"]);
+const PIECE = new Set(["name","client","platesManual","manualHours"]);
+let excelRow = "";
 const EXAMPLE = { name: "Maqueta de prueba (ejemplo)", vol0: 25, h0: 62, x0: 0, y0: 0, scale: 100, qty: 1, example: true };
 // Escala: el alto y la base cambian en proporción directa; el volumen cambia al cubo (50 % de alto = 1/8 de resina).
 function scaled(pc) {
@@ -550,6 +561,15 @@ function renderUnsafe() {
     "Si estás de acuerdo, te envío los datos de pago para confirmar tu pedido 😊",
   ];
   $("msg").value = lines.join("\n");
+
+  const mat = q.resinCost + q.elecCost + q.supplies, repo = q.amortCost + q.riskCost, mano = q.labor;
+  const exRows = [["Precio cobrado", q.total, "lo que le cobras al cliente"], ["Materiales", mat, "resina + luz + consumibles"],
+    ["Reposición de equipo", repo, "amortización + margen por fallos"], ["Mano de obra", mano, "tu trabajo: postprocesado y diseño"]];
+  $("excelRows").innerHTML = exRows.map(([a, v, d]) => `<tr><td>${a}<small>${d}</small></td><td class="v">${money(v)}</td></tr>`).join("");
+  const dec = n => (Math.round(n * 100) / 100).toFixed(2).replace(".", ",");
+  const d = new Date(), fecha = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+  const producto = (p.name || p.pieces.filter(pc => pc.qty > 0).map(pc => pc.name.replace(/\s*\(ejemplo\)\s*/i, "") + (pc.qty > 1 ? " ×" + pc.qty : "")).join(" + ")).replace(/[\t\n]/g, " ");
+  excelRow = [fecha, (p.client || "").replace(/[\t\n]/g, " "), producto, q.qty, dec(q.total), dec(mat), dec(repo), dec(mano)].join("\t");
 }
 
 function collectData() {
@@ -651,6 +671,15 @@ $("importApply").addEventListener("click", () => {
   $("dataMsg").textContent = saved ? "Datos importados y guardados en este dispositivo." : "Datos importados, pero este navegador no permite guardarlos: se perderán al cerrar la página.";
 });
 
+$("copyExcel").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(excelRow); $("excelMsg").textContent = "Copiado. Pégalo en la columna Fecha de una fila vacía en la hoja Ventas."; }
+  catch (e) {
+    const t = document.createElement("textarea"); t.value = excelRow; document.body.appendChild(t); t.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch (e2) {}
+    t.remove();
+    $("excelMsg").textContent = ok ? "Copiado. Pégalo en la columna Fecha de una fila vacía en la hoja Ventas." : "No se pudo copiar automáticamente en este navegador.";
+  }
+});
 $("copyBtn").addEventListener("click", async () => {
   const text = $("msg").value;
   try { await navigator.clipboard.writeText(text); $("copyMsg").textContent = "Copiado. Pégalo en el chat de WhatsApp."; }
